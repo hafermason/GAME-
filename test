@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Accounting Quest</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface2: #273548;
+      --border: #334155;
+      --accent: #38bdf8;
+      --accent2: #818cf8;
+      --success: #34d399;
+      --danger: #f87171;
+      --warn: #fbbf24;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    header {
+      width: 100%;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 { font-size: 1.4rem; color: var(--accent); letter-spacing: .5px; }
+    #hud { display: flex; gap: 20px; align-items: center; font-size: .9rem; }
+    .hud-item { display: flex; flex-direction: column; align-items: center; }
+    .hud-label { font-size: .65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+    .hud-value { font-size: 1.1rem; font-weight: 700; }
+    #score-val { color: var(--accent); }
+    #streak-val { color: var(--warn); }
+    #level-val { color: var(--accent2); }
+
+    main {
+      width: 100%;
+      max-width: 760px;
+      padding: 30px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* ── SCREENS ── */
+    .screen { display: none; flex-direction: column; gap: 20px; }
+    .screen.active { display: flex; }
+
+    /* MENU */
+    #menu-screen { align-items: center; text-align: center; gap: 28px; }
+    #menu-screen h2 { font-size: 2rem; color: var(--accent); }
+    #menu-screen p { color: var(--muted); max-width: 480px; line-height: 1.6; }
+    .mode-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      width: 100%;
+      max-width: 520px;
+    }
+    .mode-card {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      cursor: pointer;
+      transition: border-color .2s, transform .15s;
+      text-align: left;
+    }
+    .mode-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .mode-card h3 { font-size: 1rem; margin-bottom: 6px; }
+    .mode-card p { font-size: .8rem; color: var(--muted); line-height: 1.5; }
+    .mode-icon { font-size: 1.8rem; margin-bottom: 8px; }
+
+    /* GAME */
+    #progress-bar-wrap { background: var(--surface2); border-radius: 99px; height: 6px; }
+    #progress-bar { height: 100%; border-radius: 99px; background: var(--accent); transition: width .4s; }
+
+    .category-badge {
+      display: inline-block;
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 3px 10px;
+      border-radius: 99px;
+      margin-bottom: 4px;
+    }
+    .cat-je { background: #1e3a5f; color: #7dd3fc; }
+    .cat-eq { background: #1a3a2a; color: #6ee7b7; }
+    .cat-fs { background: #3b1f5e; color: #c4b5fd; }
+    .cat-ac { background: #3b2a0f; color: #fcd34d; }
+
+    #question-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+    }
+    #question-text {
+      font-size: 1.1rem;
+      line-height: 1.65;
+      margin-bottom: 18px;
+    }
+    #scenario-box {
+      background: var(--surface2);
+      border-left: 3px solid var(--accent);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin-bottom: 18px;
+      font-size: .92rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* Multiple choice */
+    #choices { display: flex; flex-direction: column; gap: 10px; }
+    .choice-btn {
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 13px 18px;
+      color: var(--text);
+      cursor: pointer;
+      font-size: .95rem;
+      text-align: left;
+      transition: border-color .15s, background .15s;
+      line-height: 1.5;
+    }
+    .choice-btn:hover:not(:disabled) { border-color: var(--accent); background: #1a3040; }
+    .choice-btn.correct { border-color: var(--success); background: #0d2e20; color: var(--success); }
+    .choice-btn.wrong { border-color: var(--danger); background: #2e1010; color: var(--danger); }
+
+    /* T-Account / fill inputs */
+    .t-account {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .t-side { padding: 12px; }
+    .t-side:first-child { border-right: 2px solid var(--border); }
+    .t-side h4 { text-align: center; font-size: .8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 10px; }
+    .t-entry { display: flex; justify-content: space-between; padding: 4px 0; font-size: .9rem; }
+
+    .fill-input {
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 10px 14px;
+      font-size: 1rem;
+      width: 100%;
+      outline: none;
+      transition: border-color .15s;
+    }
+    .fill-input:focus { border-color: var(--accent); }
+    .fill-input.correct { border-color: var(--success); background: #0d2e20; }
+    .fill-input.wrong { border-color: var(--danger); background: #2e1010; }
+
+    /* Journal entry builder */
+    #je-builder { display: flex; flex-direction: column; gap: 10px; }
+    .je-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 8px;
+      align-items: center;
+    }
+    .je-row select, .je-row input {
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 8px 10px;
+      font-size: .9rem;
+      outline: none;
+    }
+    .je-row select:focus, .je-row input:focus { border-color: var(--accent); }
+
+    /* Matching */
+    #match-area { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .match-col h4 { font-size: .75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; }
+    .match-item {
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-size: .9rem;
+      margin-bottom: 8px;
+      transition: border-color .15s;
+    }
+    .match-item.selected { border-color: var(--accent); background: #1a3040; }
+    .match-item.matched-ok { border-color: var(--success); background: #0d2e20; cursor: default; }
+    .match-item.matched-bad { border-color: var(--danger); background: #2e1010; cursor: default; }
+
+    /* Feedback */
+    #feedback-box {
+      border-radius: 10px;
+      padding: 14px 18px;
+      font-size: .95rem;
+      line-height: 1.6;
+      display: none;
+    }
+    #feedback-box.show { display: block; }
+    #feedback-box.ok { background: #0d2e20; border: 1px solid var(--success); color: var(--success); }
+    #feedback-box.bad { background: #2e1010; border: 1px solid var(--danger); color: var(--danger); }
+
+    /* Buttons */
+    .btn {
+      padding: 12px 28px;
+      border-radius: 10px;
+      border: none;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s, transform .1s;
+    }
+    .btn:hover { opacity: .88; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn-primary { background: var(--accent); color: #0f172a; }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1.5px solid var(--border); }
+    .btn-success { background: var(--success); color: #0f172a; }
+    #action-row { display: flex; gap: 12px; justify-content: flex-end; }
+
+    /* RESULTS */
+    #results-screen { align-items: center; text-align: center; gap: 18px; }
+    #results-screen h2 { font-size: 1.8rem; }
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      width: 100%;
+    }
+    .result-stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .result-stat .label { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+    .result-stat .value { font-size: 1.8rem; font-weight: 700; margin-top: 4px; }
+    #breakdown { width: 100%; }
+    .breakdown-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: .9rem;
+    }
+    .breakdown-row .cat { color: var(--muted); }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      top: 70px;
+      right: 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 18px;
+      font-size: .9rem;
+      opacity: 0;
+      transition: opacity .3s;
+      pointer-events: none;
+      z-index: 999;
+    }
+    #toast.show { opacity: 1; }
+    #toast.streak { border-color: var(--warn); color: var(--warn); }
+
+    @media (max-width: 520px) {
+      .mode-grid { grid-template-columns: 1fr; }
+      .results-grid { grid-template-columns: 1fr 1fr; }
+      .je-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>⚖ Accounting Quest</h1>
+  <div id="hud">
+    <div class="hud-item">
+      <span class="hud-label">Score</span>
+      <span class="hud-value" id="score-val">0</span>
+    </div>
+    <div class="hud-item">
+      <span class="hud-label">Streak</span>
+      <span class="hud-value" id="streak-val">0🔥</span>
+    </div>
+    <div class="hud-item">
+      <span class="hud-label">Level</span>
+      <span class="hud-value" id="level-val">1</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- MENU -->
+  <div class="screen active" id="menu-screen">
+    <h2>Accounting Quest</h2>
+    <p>Master accounting fundamentals through interactive challenges. Choose a mode to begin your study session.</p>
+    <div class="mode-grid">
+      <div class="mode-card" onclick="startMode('mixed')">
+        <div class="mode-icon">🎲</div>
+        <h3>Mixed Practice</h3>
+        <p>All topics — great for general review and exam prep.</p>
+      </div>
+      <div class="mode-card" onclick="startMode('je')">
+        <div class="mode-icon">📒</div>
+        <h3>Journal Entries</h3>
+        <p>Record debits & credits for common business transactions.</p>
+      </div>
+      <div class="mode-card" onclick="startMode('eq')">
+        <div class="mode-icon">⚖️</div>
+        <h3>Accounting Equation</h3>
+        <p>Assets = Liabilities + Equity balancing problems.</p>
+      </div>
+      <div class="mode-card" onclick="startMode('fs')">
+        <div class="mode-icon">📊</div>
+        <h3>Financial Statements</h3>
+        <p>Classify accounts, compute totals, and interpret statements.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- GAME -->
+  <div class="screen" id="game-screen">
+    <div id="progress-bar-wrap"><div id="progress-bar" style="width:0%"></div></div>
+
+    <div id="question-card">
+      <span id="cat-badge" class="category-badge"></span>
+      <div id="question-text"></div>
+      <div id="scenario-box" style="display:none"></div>
+
+      <!-- mc -->
+      <div id="choices"></div>
+      <!-- fill -->
+      <div id="fill-wrap" style="display:none">
+        <input class="fill-input" id="fill-input" type="text" placeholder="Your answer…" autocomplete="off" />
+      </div>
+      <!-- je builder -->
+      <div id="je-wrap" style="display:none">
+        <div id="je-builder"></div>
+      </div>
+      <!-- matching -->
+      <div id="match-wrap" style="display:none">
+        <div id="match-area">
+          <div><h4>Terms</h4><div id="match-terms"></div></div>
+          <div><h4>Definitions</h4><div id="match-defs"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="feedback-box"></div>
+
+    <div id="action-row">
+      <button class="btn btn-secondary" onclick="skipQuestion()">Skip</button>
+      <button class="btn btn-primary" id="submit-btn" onclick="submitAnswer()">Submit</button>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="screen" id="results-screen">
+    <h2 id="results-title"></h2>
+    <p id="results-sub" style="color:var(--muted)"></p>
+    <div class="results-grid">
+      <div class="result-stat">
+        <div class="label">Score</div>
+        <div class="value" id="res-score" style="color:var(--accent)"></div>
+      </div>
+      <div class="result-stat">
+        <div class="label">Correct</div>
+        <div class="value" id="res-correct" style="color:var(--success)"></div>
+      </div>
+      <div class="result-stat">
+        <div class="label">Best Streak</div>
+        <div class="value" id="res-streak" style="color:var(--warn)"></div>
+      </div>
+    </div>
+    <div id="breakdown"></div>
+    <div style="display:flex;gap:12px">
+      <button class="btn btn-secondary" onclick="showMenu()">Main Menu</button>
+      <button class="btn btn-success" id="play-again-btn" onclick="playAgain()">Play Again</button>
+    </div>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+const QB = {
+  je: [
+    {
+      type: 'mc',
+      q: 'A company purchases $5,000 of office supplies on account. Which journal entry is correct?',
+      choices: [
+        'DR Office Supplies $5,000 | CR Accounts Payable $5,000',
+        'DR Accounts Payable $5,000 | CR Office Supplies $5,000',
+        'DR Office Supplies $5,000 | CR Cash $5,000',
+        'DR Accounts Receivable $5,000 | CR Office Supplies $5,000',
+      ],
+      answer: 0,
+      explanation: 'Purchasing supplies on account increases an asset (Office Supplies — debit) and increases a liability (Accounts Payable — credit).',
+    },
+    {
+      type: 'mc',
+      q: 'A business receives $3,000 cash from a customer for services rendered today. Which entry is correct?',
+      choices: [
+        'DR Service Revenue $3,000 | CR Cash $3,000',
+        'DR Cash $3,000 | CR Unearned Revenue $3,000',
+        'DR Cash $3,000 | CR Service Revenue $3,000',
+        'DR Accounts Receivable $3,000 | CR Service Revenue $3,000',
+      ],
+      answer: 2,
+      explanation: 'Cash received for services rendered today: debit Cash (asset increases) and credit Service Revenue (revenue earned).',
+    },
+    {
+      type: 'mc',
+      q: 'A company pays $1,200 for a 12-month insurance policy on January 1. The initial entry should be:',
+      choices: [
+        'DR Insurance Expense $1,200 | CR Cash $1,200',
+        'DR Prepaid Insurance $1,200 | CR Cash $1,200',
+        'DR Cash $1,200 | CR Prepaid Insurance $1,200',
+        'DR Prepaid Insurance $100 | CR Cash $100',
+      ],
+      answer: 1,
+      explanation: 'Paying for insurance in advance creates Prepaid Insurance (an asset). Debit Prepaid Insurance, credit Cash.',
+    },
+    {
+      type: 'mc',
+      q: 'Which of the following correctly records the payment of a $2,000 account payable?',
+      choices: [
+        'DR Cash $2,000 | CR Accounts Payable $2,000',
+        'DR Accounts Payable $2,000 | CR Accounts Receivable $2,000',
+        'DR Accounts Payable $2,000 | CR Cash $2,000',
+        'DR Accounts Receivable $2,000 | CR Cash $2,000',
+      ],
+      answer: 2,
+      explanation: 'Paying an accounts payable decreases the liability (debit A/P) and decreases cash (credit Cash).',
+    },
+    {
+      type: 'mc',
+      q: 'A company borrows $10,000 from a bank. The correct entry is:',
+      choices: [
+        'DR Notes Payable $10,000 | CR Cash $10,000',
+        'DR Cash $10,000 | CR Notes Payable $10,000',
+        'DR Cash $10,000 | CR Revenue $10,000',
+        'DR Loan Expense $10,000 | CR Cash $10,000',
+      ],
+      answer: 1,
+      explanation: 'Borrowing money increases Cash (debit) and creates a Notes Payable liability (credit).',
+    },
+    {
+      type: 'mc',
+      q: 'The owner withdraws $800 from the business for personal use. The correct entry is:',
+      choices: [
+        'DR Salary Expense $800 | CR Cash $800',
+        'DR Drawings $800 | CR Cash $800',
+        'DR Cash $800 | CR Drawings $800',
+        'DR Equity $800 | CR Revenue $800',
+      ],
+      answer: 1,
+      explanation: "Owner withdrawals are recorded by debiting the Drawings (or Owner's Withdrawals) account and crediting Cash.",
+    },
+    {
+      type: 'fill',
+      q: 'A company earns $4,500 on credit. The account DEBITED is ___.',
+      answer: 'accounts receivable',
+      altAnswers: ['a/r', 'receivable', 'accounts rec'],
+      explanation: 'Revenue earned on credit increases Accounts Receivable (asset — debit side) and Service Revenue (credit side).',
+    },
+    {
+      type: 'fill',
+      q: 'When recording depreciation expense, the account CREDITED is ___.',
+      answer: 'accumulated depreciation',
+      altAnswers: ['accum depreciation', 'accum. depreciation', 'accum dep'],
+      explanation: 'Depreciation: DR Depreciation Expense | CR Accumulated Depreciation (a contra-asset).',
+    },
+    {
+      type: 'mc',
+      q: 'Accrued salaries of $2,500 at year-end have not yet been paid. The adjusting entry is:',
+      choices: [
+        'DR Cash $2,500 | CR Salaries Payable $2,500',
+        'DR Salaries Payable $2,500 | CR Salaries Expense $2,500',
+        'DR Salaries Expense $2,500 | CR Salaries Payable $2,500',
+        'DR Prepaid Salaries $2,500 | CR Cash $2,500',
+      ],
+      answer: 2,
+      explanation: 'An accrual for unpaid salaries: debit Salaries Expense (expense incurred) and credit Salaries Payable (liability created).',
+    },
+    {
+      type: 'mc',
+      q: 'A company collects $6,000 cash in advance for services to be performed next month. The entry is:',
+      choices: [
+        'DR Cash $6,000 | CR Service Revenue $6,000',
+        'DR Cash $6,000 | CR Unearned Revenue $6,000',
+        'DR Unearned Revenue $6,000 | CR Cash $6,000',
+        'DR Accounts Receivable $6,000 | CR Unearned Revenue $6,000',
+      ],
+      answer: 1,
+      explanation: 'Cash collected before services are performed is Unearned Revenue (a liability) until earned.',
+    },
+  ],
+  eq: [
+    {
+      type: 'fill',
+      q: 'Total Assets = $120,000 | Total Liabilities = $45,000. What is Total Equity?',
+      answer: '75000',
+      altAnswers: ['$75,000', '75,000', '$75000'],
+      explanation: 'Equity = Assets − Liabilities = $120,000 − $45,000 = $75,000.',
+    },
+    {
+      type: 'fill',
+      q: 'Total Assets = $250,000 | Equity = $160,000. What are Total Liabilities?',
+      answer: '90000',
+      altAnswers: ['$90,000', '90,000', '$90000'],
+      explanation: 'Liabilities = Assets − Equity = $250,000 − $160,000 = $90,000.',
+    },
+    {
+      type: 'mc',
+      q: 'A company purchases equipment for $15,000 cash. How does this affect the accounting equation?',
+      choices: [
+        'Assets increase $15,000; Liabilities increase $15,000',
+        'Assets unchanged; Equity decreases $15,000',
+        'One asset increases $15,000 and another asset decreases $15,000',
+        'Assets decrease $15,000; Equity decreases $15,000',
+      ],
+      answer: 2,
+      explanation: 'Cash (asset) decreases and Equipment (asset) increases by the same amount — assets net to zero change.',
+    },
+    {
+      type: 'mc',
+      q: 'Recording an expense paid in cash will:',
+      choices: [
+        'Decrease assets and decrease equity',
+        'Decrease liabilities and increase equity',
+        'Increase assets and decrease equity',
+        'Have no effect on equity',
+      ],
+      answer: 0,
+      explanation: 'Paying an expense: Cash (asset) decreases and Equity decreases (expenses reduce retained earnings).',
+    },
+    {
+      type: 'mc',
+      q: 'Owner invests $25,000 cash into the business. The effect is:',
+      choices: [
+        'Assets +$25,000; Liabilities +$25,000',
+        'Assets +$25,000; Equity +$25,000',
+        'Liabilities +$25,000; Equity −$25,000',
+        'No change to the equation',
+      ],
+      answer: 1,
+      explanation: 'Owner investment increases Cash (asset) and increases Owner Equity — both sides of the equation grow equally.',
+    },
+    {
+      type: 'fill',
+      q: 'Net Income = $30,000. Dividends = $8,000. Opening Retained Earnings = $50,000. What is ending Retained Earnings?',
+      answer: '72000',
+      altAnswers: ['$72,000', '72,000', '$72000'],
+      explanation: 'Ending RE = $50,000 + $30,000 − $8,000 = $72,000.',
+    },
+    {
+      type: 'mc',
+      q: 'Paying off a $5,000 account payable with cash will:',
+      choices: [
+        'Decrease assets, decrease equity',
+        'Increase assets, decrease liabilities',
+        'Decrease assets, decrease liabilities',
+        'Have no effect on the accounting equation',
+      ],
+      answer: 2,
+      explanation: 'Cash (asset) decreases and Accounts Payable (liability) decreases — total equity is unchanged.',
+    },
+    {
+      type: 'mc',
+      q: 'Revenue of $8,000 is earned on credit. The effect on the accounting equation is:',
+      choices: [
+        'Assets +$8,000; Liabilities +$8,000',
+        'Assets +$8,000; Equity +$8,000',
+        'Liabilities −$8,000; Equity +$8,000',
+        'No effect until cash is collected',
+      ],
+      answer: 1,
+      explanation: 'Accounts Receivable (asset) increases and Equity (retained earnings via revenue) increases.',
+    },
+  ],
+  fs: [
+    {
+      type: 'mc',
+      q: 'Which financial statement reports revenues and expenses?',
+      choices: [
+        'Balance Sheet',
+        'Statement of Cash Flows',
+        'Income Statement',
+        'Statement of Retained Earnings',
+      ],
+      answer: 2,
+      explanation: 'The Income Statement (Profit & Loss) reports revenues and expenses to show net income or net loss.',
+    },
+    {
+      type: 'mc',
+      q: 'Accounts Receivable appears on which financial statement?',
+      choices: [
+        'Income Statement',
+        'Statement of Cash Flows',
+        'Balance Sheet',
+        'Statement of Retained Earnings',
+      ],
+      answer: 2,
+      explanation: 'Accounts Receivable is a current asset and appears on the Balance Sheet.',
+    },
+    {
+      type: 'mc',
+      q: 'Gross Profit is calculated as:',
+      choices: [
+        'Net Sales − Operating Expenses',
+        'Net Sales − Cost of Goods Sold',
+        'Revenue − All Expenses',
+        'Operating Income − Interest Expense',
+      ],
+      answer: 1,
+      explanation: 'Gross Profit = Net Sales − Cost of Goods Sold. This measures profit before operating expenses.',
+    },
+    {
+      type: 'fill',
+      q: 'Revenue = $180,000 | COGS = $110,000 | Operating Expenses = $40,000. What is Net Income?',
+      answer: '30000',
+      altAnswers: ['$30,000', '30,000', '$30000'],
+      explanation: 'Net Income = Revenue − COGS − Operating Expenses = $180,000 − $110,000 − $40,000 = $30,000.',
+    },
+    {
+      type: 'mc',
+      q: 'Which of the following is a non-current (long-term) asset?',
+      choices: [
+        'Cash',
+        'Accounts Receivable',
+        'Inventory',
+        'Property, Plant & Equipment',
+      ],
+      answer: 3,
+      explanation: 'PP&E is a long-term (non-current) asset. Cash, A/R, and Inventory are all current assets.',
+    },
+    {
+      type: 'mc',
+      q: 'The current ratio is best described as:',
+      choices: [
+        'Net Income ÷ Total Assets',
+        'Current Assets ÷ Current Liabilities',
+        'Total Assets ÷ Total Equity',
+        'Cash ÷ Current Liabilities',
+      ],
+      answer: 1,
+      explanation: 'Current Ratio = Current Assets ÷ Current Liabilities. It measures short-term liquidity.',
+    },
+    {
+      type: 'mc',
+      q: 'Which item would appear on the Statement of Cash Flows under "Operating Activities"?',
+      choices: [
+        'Purchase of equipment',
+        'Proceeds from a bank loan',
+        'Collection of accounts receivable',
+        'Payment of dividends',
+      ],
+      answer: 2,
+      explanation: 'Collecting A/R is an operating activity. Equipment purchase = investing; bank loan = financing; dividends = financing.',
+    },
+    {
+      type: 'fill',
+      q: 'Current Assets = $85,000 | Current Liabilities = $34,000. What is the Current Ratio? (round to 2 decimal places)',
+      answer: '2.5',
+      altAnswers: ['2.50'],
+      explanation: 'Current Ratio = $85,000 ÷ $34,000 ≈ 2.50.',
+    },
+    {
+      type: 'mc',
+      q: 'Depreciation expense is reported on which statement?',
+      choices: [
+        'Balance Sheet only',
+        'Statement of Cash Flows only',
+        'Income Statement',
+        'Statement of Retained Earnings',
+      ],
+      answer: 2,
+      explanation: 'Depreciation is an expense recorded on the Income Statement. Accumulated Depreciation (the contra account) appears on the Balance Sheet.',
+    },
+    {
+      type: 'mc',
+      q: 'Which of the following would INCREASE Retained Earnings?',
+      choices: [
+        'Declaring dividends',
+        'Reporting a net loss',
+        'Reporting net income',
+        'Issuing common stock',
+      ],
+      answer: 2,
+      explanation: 'Net income increases Retained Earnings. Dividends and net losses decrease it; issuing stock affects Share Capital, not Retained Earnings.',
+    },
+  ],
+  ac: [
+    {
+      type: 'mc',
+      q: 'Which of the following is a LIABILITY account?',
+      choices: ['Accounts Receivable', 'Prepaid Rent', 'Unearned Revenue', 'Retained Earnings'],
+      answer: 2,
+      explanation: 'Unearned Revenue is a liability (obligation to provide services). A/R and Prepaid Rent are assets; Retained Earnings is equity.',
+    },
+    {
+      type: 'mc',
+      q: 'A normal balance is a CREDIT for which type of account?',
+      choices: ['Assets', 'Expenses', 'Drawings', 'Liabilities'],
+      answer: 3,
+      explanation: 'Liabilities, revenues, and equity accounts have normal credit balances. Assets, expenses, and drawings have normal debit balances.',
+    },
+    {
+      type: 'mc',
+      q: 'Accumulated Depreciation is best classified as a:',
+      choices: ['Liability', 'Expense', 'Contra-asset', 'Revenue'],
+      answer: 2,
+      explanation: 'Accumulated Depreciation offsets the related asset on the Balance Sheet, making it a contra-asset with a credit normal balance.',
+    },
+    {
+      type: 'mc',
+      q: 'Which account is closed at the end of each accounting period?',
+      choices: ['Cash', 'Accounts Payable', 'Common Stock', 'Service Revenue'],
+      answer: 3,
+      explanation: 'Temporary accounts (revenues, expenses, dividends) are closed at period-end. Permanent accounts (assets, liabilities, equity) carry forward.',
+    },
+    {
+      type: 'mc',
+      q: 'Goodwill is classified as:',
+      choices: [
+        'Current Asset',
+        'Intangible Asset',
+        'Current Liability',
+        'Operating Expense',
+      ],
+      answer: 1,
+      explanation: 'Goodwill is an intangible long-term asset that arises from a business acquisition paying more than fair value of net assets.',
+    },
+    {
+      type: 'mc',
+      q: 'Which of the following represents an EXPENSE?',
+      choices: ['Accounts Payable', 'Prepaid Insurance', 'Cost of Goods Sold', 'Notes Receivable'],
+      answer: 2,
+      explanation: 'COGS is an expense matched against revenue. A/P is a liability, Prepaid Insurance is an asset, Notes Receivable is an asset.',
+    },
+  ],
+};
+
+let state = {
+  mode: 'mixed',
+  questions: [],
+  index: 0,
+  score: 0,
+  streak: 0,
+  bestStreak: 0,
+  correct: 0,
+  answered: 0,
+  catStats: {},
+  matchSelected: null,
+  matchPairs: [],
+  matchDone: 0,
+};
+
+const QUESTIONS_PER_ROUND = 10;
+
+function buildQueue(mode) {
+  const tag = (arr, cat) => arr.map(q => ({ ...q, _cat: cat }));
+  let pool;
+  if (mode === 'mixed') pool = [...tag(QB.je,'je'), ...tag(QB.eq,'eq'), ...tag(QB.fs,'fs'), ...tag(QB.ac,'ac')];
+  else if (mode === 'je') pool = tag(QB.je,'je');
+  else if (mode === 'eq') pool = tag(QB.eq,'eq');
+  else pool = [...tag(QB.fs,'fs'), ...tag(QB.ac,'ac')];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, QUESTIONS_PER_ROUND);
+}
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function showMenu() { show('menu-screen'); }
+
+function startMode(mode) {
+  state = {
+    mode, questions: buildQueue(mode), index: 0, score: 0, streak: 0,
+    bestStreak: 0, correct: 0, answered: 0,
+    catStats: { je: [0,0], eq: [0,0], fs: [0,0], ac: [0,0] },
+    matchSelected: null, matchPairs: [], matchDone: 0,
+  };
+  updateHUD();
+  show('game-screen');
+  renderQuestion();
+}
+
+function playAgain() { startMode(state.mode); }
+
+function updateHUD() {
+  document.getElementById('score-val').textContent = state.score;
+  document.getElementById('streak-val').textContent = state.streak + (state.streak >= 3 ? '🔥' : '');
+  document.getElementById('level-val').textContent = Math.floor(state.score / 50) + 1;
+}
+
+const catMeta = {
+  je:  { label: 'Journal Entries',        cls: 'cat-je' },
+  eq:  { label: 'Accounting Equation',    cls: 'cat-eq' },
+  fs:  { label: 'Financial Statements',   cls: 'cat-fs' },
+  ac:  { label: 'Account Classification', cls: 'cat-ac' },
+};
+
+function renderQuestion() {
+  if (state.index >= state.questions.length) { showResults(); return; }
+  const q = state.questions[state.index];
+  document.getElementById('progress-bar').style.width = (state.index / state.questions.length * 100) + '%';
+  const cat = catMeta[q._cat] || catMeta.je;
+  const badge = document.getElementById('cat-badge');
+  badge.textContent = cat.label;
+  badge.className = 'category-badge ' + cat.cls;
+  document.getElementById('question-text').textContent = q.q;
+  const scenario = document.getElementById('scenario-box');
+  if (q.scenario) { scenario.style.display=''; scenario.textContent = q.scenario; }
+  else { scenario.style.display='none'; }
+  document.getElementById('choices').innerHTML = '';
+  document.getElementById('fill-wrap').style.display = 'none';
+  document.getElementById('je-wrap').style.display = 'none';
+  document.getElementById('match-wrap').style.display = 'none';
+  document.getElementById('feedback-box').classList.remove('show');
+  document.getElementById('submit-btn').disabled = false;
+  document.getElementById('submit-btn').textContent = 'Submit';
+  if (q.type === 'mc') renderMC(q);
+  else if (q.type === 'fill') renderFill();
+  else if (q.type === 'match') renderMatch(q);
+}
+
+function renderMC(q) {
+  const wrap = document.getElementById('choices');
+  q.choices.forEach((c, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.textContent = c;
+    btn.onclick = () => selectChoice(btn, i, q);
+    wrap.appendChild(btn);
+  });
+  document.getElementById('submit-btn').style.display = 'none';
+}
+
+function selectChoice(btn, idx, q) {
+  const btns = document.querySelectorAll('.choice-btn');
+  btns.forEach(b => b.disabled = true);
+  const correct = idx === q.answer;
+  btn.classList.add(correct ? 'correct' : 'wrong');
+  if (!correct) btns[q.answer].classList.add('correct');
+  recordAnswer(correct, q._cat);
+  showFeedback(correct, q.explanation);
+}
+
+function renderFill() {
+  document.getElementById('fill-wrap').style.display = '';
+  const inp = document.getElementById('fill-input');
+  inp.value = ''; inp.className = 'fill-input'; inp.disabled = false; inp.focus();
+  inp.onkeydown = e => { if (e.key === 'Enter') submitAnswer(); };
+  document.getElementById('submit-btn').style.display = '';
+}
+
+function renderMatch(q) {
+  document.getElementById('match-wrap').style.display = '';
+  document.getElementById('submit-btn').style.display = '';
+  state.matchPairs = q.pairs; state.matchSelected = null; state.matchDone = 0;
+  const terms = [...q.pairs.map(p => p.term)];
+  const defs  = [...q.pairs.map(p => p.def)];
+  shuffle(terms); shuffle(defs);
+  const termsEl = document.getElementById('match-terms');
+  const defsEl  = document.getElementById('match-defs');
+  termsEl.innerHTML = ''; defsEl.innerHTML = '';
+  terms.forEach(t => {
+    const el = document.createElement('div');
+    el.className = 'match-item'; el.textContent = t; el.dataset.term = t;
+    el.onclick = () => matchClick(el, 'term');
+    termsEl.appendChild(el);
+  });
+  defs.forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'match-item'; el.textContent = d; el.dataset.def = d;
+    el.onclick = () => matchClick(el, 'def');
+    defsEl.appendChild(el);
+  });
+}
+
+function matchClick(el, side) {
+  if (el.classList.contains('matched-ok') || el.classList.contains('matched-bad')) return;
+  if (!state.matchSelected) { state.matchSelected = { el, side }; el.classList.add('selected'); return; }
+  const prev = state.matchSelected;
+  if (prev.side === side) { prev.el.classList.remove('selected'); state.matchSelected = { el, side }; el.classList.add('selected'); return; }
+  let termEl, defEl;
+  if (side === 'def') { termEl = prev.el; defEl = el; } else { termEl = el; defEl = prev.el; }
+  const pair = state.matchPairs.find(p => p.term === termEl.dataset.term);
+  const ok = pair && pair.def === defEl.dataset.def;
+  termEl.classList.remove('selected');
+  termEl.classList.add(ok ? 'matched-ok' : 'matched-bad');
+  defEl.classList.add(ok ? 'matched-ok' : 'matched-bad');
+  state.matchSelected = null;
+  if (ok) state.matchDone++;
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
+function submitAnswer() {
+  const q = state.questions[state.index];
+  if (q.type === 'mc') return;
+  if (q.type === 'fill') {
+    const raw = document.getElementById('fill-input').value.trim().toLowerCase().replace(/[$,\s]/g,'');
+    const correct = raw === q.answer.replace(/[$,\s]/g,'')
+      || (q.altAnswers || []).some(a => raw === a.replace(/[$,\s]/g,''));
+    const inp = document.getElementById('fill-input');
+    inp.className = 'fill-input ' + (correct ? 'correct' : 'wrong');
+    inp.disabled = true;
+    recordAnswer(correct, q._cat);
+    showFeedback(correct, q.explanation);
+  }
+  if (q.type === 'match') {
+    const correct = state.matchDone === state.matchPairs.length;
+    recordAnswer(correct, q._cat);
+    showFeedback(correct, q.explanation || 'Match all terms to their definitions.');
+  }
+}
+
+function recordAnswer(correct, cat) {
+  state.answered++;
+  if (correct) {
+    state.correct++;
+    state.streak++;
+    if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+    const bonus = state.streak >= 5 ? 20 : state.streak >= 3 ? 15 : 10;
+    state.score += bonus;
+    if (state.streak === 3) toast('3 in a row! +5 bonus', 'streak');
+    if (state.streak === 5) toast('5-streak! +10 bonus 🔥', 'streak');
+  } else {
+    state.streak = 0;
+  }
+  if (cat && state.catStats[cat]) {
+    state.catStats[cat][0] += correct ? 1 : 0;
+    state.catStats[cat][1]++;
+  }
+  updateHUD();
+}
+
+function showFeedback(correct, explanation) {
+  const box = document.getElementById('feedback-box');
+  box.className = 'feedback-box show ' + (correct ? 'ok' : 'bad');
+  box.innerHTML = `<strong>${correct ? '✓ Correct!' : '✗ Incorrect'}</strong> — ${explanation}`;
+  const btn = document.getElementById('submit-btn');
+  btn.textContent = state.index + 1 >= state.questions.length ? 'Finish' : 'Next →';
+  btn.className = 'btn btn-success';
+  btn.onclick = nextQuestion;
+}
+
+function nextQuestion() {
+  state.index++;
+  document.getElementById('submit-btn').className = 'btn btn-primary';
+  document.getElementById('submit-btn').onclick = submitAnswer;
+  renderQuestion();
+}
+
+function skipQuestion() {
+  const q = state.questions[state.index];
+  recordAnswer(false, q._cat);
+  showFeedback(false, 'Skipped. ' + (q.explanation || ''));
+}
+
+function showResults() {
+  document.getElementById('progress-bar').style.width = '100%';
+  const pct = Math.round((state.correct / state.answered) * 100);
+  const emoji = pct >= 90 ? '🏆' : pct >= 70 ? '🎯' : pct >= 50 ? '📈' : '📚';
+  const msg = pct >= 90 ? 'Outstanding!' : pct >= 70 ? 'Great work!' : pct >= 50 ? 'Keep studying!' : 'More practice needed';
+  document.getElementById('results-title').textContent = `${emoji} ${msg}`;
+  document.getElementById('results-sub').textContent = `You scored ${pct}% — ${state.correct} of ${state.answered} correct`;
+  document.getElementById('res-score').textContent = state.score;
+  document.getElementById('res-correct').textContent = `${state.correct}/${state.answered}`;
+  document.getElementById('res-streak').textContent = state.bestStreak;
+  const bd = document.getElementById('breakdown');
+  bd.innerHTML = '<h4 style="margin-bottom:10px;color:var(--muted);font-size:.85rem;text-transform:uppercase;letter-spacing:1px;">By Category</h4>';
+  Object.entries(state.catStats).forEach(([cat, [c, t]]) => {
+    if (t === 0) return;
+    const meta = catMeta[cat];
+    const cpct = Math.round((c / t) * 100);
+    bd.innerHTML += `<div class="breakdown-row"><span class="cat">${meta.label}</span><span>${c}/${t} &nbsp;<strong style="color:${cpct>=70?'var(--success)':'var(--danger)'}">${cpct}%</strong></span></div>`;
+  });
+  document.getElementById('play-again-btn').textContent = 'Play Again';
+  show('results-screen');
+}
+
+let toastTimer;
+function toast(msg, cls) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + (cls || '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = '', 2200);
+}
+</script>
+</body>
+</html>
